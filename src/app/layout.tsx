@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Agentation } from "agentation";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
@@ -26,6 +27,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <Providers>{children}</Providers>
+        {process.env.NODE_ENV === "development" && <Agentation />}
       </body>
     </html>
   );
