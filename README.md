@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Gnosis Pulse
 
-## Getting Started
+A real-time network vitals dashboard for [Gnosis Chain](https://www.gnosis.io/). Gnosis Pulse tracks key health metrics — transaction volume, gas costs, block times, validator count, TVL, and GNO price — and presents them through interactive charts with multi-timeframe support.
 
-First, run the development server:
+## Metrics
+
+| Metric | Description | Data source |
+|--------|-------------|-------------|
+| Transaction cost | Cost of a standard transfer in USD | Gnosis Beacon + CoinGecko |
+| Transactions (24h) | Daily transaction count | Blockscout |
+| Block time | Average seconds between blocks | Gnosis Beacon |
+| Validators | Active validator count | Gnosis Beacon |
+| TVL | Total value locked across Gnosis DeFi | DefiLlama |
+| GNO price | Current GNO token price in USD | CoinGecko + CryptoCompare |
+
+Each metric supports the timeframes its data source can provide — from 5-second live polling to full multi-year history.
+
+## Tech stack
+
+- **Next.js 16** (App Router, Turbopack)
+- **TanStack React Query** for data fetching and SSR hydration
+- **Liveline** for animated, interactive canvas charts
+- **Framer Motion** for UI transitions
+- **Tailwind CSS 4** for styling
+- **Biome** for linting and formatting
+- **Upstash Redis** for snapshot caching
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a `.env.local` file:
 
-## Learn More
+```env
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+UPSTASH_REDIS_REST_URL=...    # optional, for snapshot caching
+UPSTASH_REDIS_REST_TOKEN=...  # optional, for snapshot caching
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Scripts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start dev server with Turbopack |
+| `pnpm build` | Production build |
+| `pnpm start` | Start production server |
+| `pnpm check` | Run Biome lint + format (auto-fix) |
+| `pnpm lint` | Lint only |
+| `pnpm format` | Format only |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## License
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
