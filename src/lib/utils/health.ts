@@ -4,9 +4,7 @@ import type { MetricsResponse } from "@/lib/data/types";
  * Derive overall chain health status from current metrics.
  * Checks block time deviation, gas price spike, and validator count.
  */
-export function deriveStatus(
-  metrics: MetricsResponse["metrics"],
-): "healthy" | "degraded" | "down" {
+export function deriveStatus(metrics: MetricsResponse["metrics"]): "healthy" | "degraded" | "down" {
   const checks = [
     metrics.blockTime.deviationPercent < 20,
     metrics.gasPrice.current < 100,

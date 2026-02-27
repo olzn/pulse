@@ -1,14 +1,14 @@
 "use client";
 
+import { hasChart, METRICS, type MetricId } from "@/config/metrics";
 import { cn } from "@/lib/utils/cn";
-import { METRICS, type MetricId } from "@/config/metrics";
 
 interface ChartToggleProps {
   selected: MetricId;
   onSelect: (id: MetricId) => void;
 }
 
-const chartableMetrics = METRICS.filter((m) => m.hasHistory);
+const chartableMetrics = METRICS.filter(hasChart);
 
 export function ChartToggle({ selected, onSelect }: ChartToggleProps) {
   return (

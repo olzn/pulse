@@ -1,15 +1,16 @@
-import type { MetricsResponse, FiatRates, DefiLlamaHistoricalTVL } from "./types";
+import { formatFiatCost } from "@/lib/utils/format";
+import { deriveStatus } from "@/lib/utils/health";
+import { getCachedMetrics, getTrend7d, setCachedMetrics } from "./cache";
 import {
   fetchBlockscoutStats,
   fetchBlockscoutTxChart,
-  fetchValidatorCount,
-  fetchTVL,
+  fetchFiatRatesAndGno,
   fetchHistoricalTVL,
-  fetchFiatRates,
+  fetchTVL,
+  fetchValidatorCount,
+  type GnoPrice,
 } from "./sources";
-import { getCachedMetrics, setCachedMetrics, getTrend7d } from "./cache";
-import { deriveStatus } from "@/lib/utils/health";
-import { formatFiatCost } from "@/lib/utils/format";
+import type { DefiLlamaHistoricalTVL, FiatRates, MetricsResponse } from "./types";
 
 const STANDARD_TRANSFER_GAS = 21_000;
 const BLOCK_TIME_TARGET = 5;
@@ -26,14 +27,14 @@ export async function aggregateMetrics(): Promise<MetricsResponse> {
   const sources: string[] = [];
 
   // Fetch all sources independently
-  const [statsResult, chartResult, validatorsResult, tvlResult, tvlHistoryResult, fiatResult] =
+  const [statsResult, chartResult, validatorsResult, tvlResult, tvlHistoryResult, coinGeckoResult] =
     await Promise.allSettled([
       fetchBlockscoutStats(),
       fetchBlockscoutTxChart(),
       fetchValidatorCount(),
       fetchTVL(),
       fetchHistoricalTVL(),
-      fetchFiatRates(),
+      fetchFiatRatesAndGno(),
     ]);
 
   // --- Blockscout stats (primary — required) ---
@@ -54,8 +55,9 @@ export async function aggregateMetrics(): Promise<MetricsResponse> {
   const blockTimeMs = stats.average_block_time;
   const blockTimeSeconds = blockTimeMs / 1000;
   const fiatCost = formatFiatCost(gasPriceGwei, STANDARD_TRANSFER_GAS, coinPriceUsd);
-  const deviationPercent =
-    Math.abs(((blockTimeSeconds - BLOCK_TIME_TARGET) / BLOCK_TIME_TARGET) * 100);
+  const deviationPercent = Math.abs(
+    ((blockTimeSeconds - BLOCK_TIME_TARGET) / BLOCK_TIME_TARGET) * 100,
+  );
 
   // --- Transaction 7d trend ---
   let txTrend7d: number | null = null;
@@ -102,10 +104,12 @@ export async function aggregateMetrics(): Promise<MetricsResponse> {
     tvlTrend30d = computeTvlTrend(tvlHistoryResult.value);
   }
 
-  // --- Fiat rates ---
+  // --- Fiat rates + GNO price ---
   let fiatRates: FiatRates = { usd: 1, gbp: 0.79, eur: 0.92 };
-  if (fiatResult.status === "fulfilled") {
-    fiatRates = fiatResult.value;
+  let gno: GnoPrice = { usd: 0, gbp: 0, eur: 0, trend24h: null };
+  if (coinGeckoResult.status === "fulfilled") {
+    fiatRates = coinGeckoResult.value.rates;
+    gno = coinGeckoResult.value.gno;
     sources.push("coingecko");
   }
 
@@ -131,6 +135,10 @@ export async function aggregateMetrics(): Promise<MetricsResponse> {
     tvl: {
       totalUsd: tvlUsd,
       trend30d: tvlTrend30d,
+    },
+    gnoPrice: {
+      usd: gno.usd,
+      trend24h: gno.trend24h,
     },
   };
 

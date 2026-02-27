@@ -25,9 +25,6 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json(
-      { error: "Service unavailable" },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
   }
 }

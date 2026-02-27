@@ -20,9 +20,7 @@ export function formatFiatCost(
  * Returns a human-readable relative time string like "2 minutes ago".
  */
 export function timeAgo(isoString: string): string {
-  const seconds = Math.floor(
-    (Date.now() - new Date(isoString).getTime()) / 1000,
-  );
+  const seconds = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
 
   if (seconds < 10) return "just now";
   if (seconds < 60) return `${seconds}s ago`;

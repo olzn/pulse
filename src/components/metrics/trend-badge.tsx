@@ -14,9 +14,7 @@ export function TrendBadge({ value, invertSentiment = false }: TrendBadgeProps) 
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-        isPositive
-          ? "bg-emerald-50 text-emerald-700"
-          : "bg-red-50 text-red-700",
+        isPositive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700",
       )}
     >
       {value > 0 ? "\u25B2" : "\u25BC"} {Math.abs(value).toFixed(1)}%

@@ -59,6 +59,30 @@ export interface CoinGeckoResponse {
     gbp: number;
     eur: number;
   };
+  gnosis: {
+    usd: number;
+    gbp: number;
+    eur: number;
+    usd_24h_change?: number;
+  };
+}
+
+/** CoinGecko market_chart response */
+export interface CoinGeckoMarketChart {
+  prices: [number, number][]; // [timestamp_ms, price_usd]
+}
+
+/** CryptoCompare historical price response */
+export interface CryptoCompareHistoryResponse {
+  Data: {
+    Data: Array<{
+      time: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+    }>;
+  };
 }
 
 /** Supported fiat currencies */
@@ -98,6 +122,10 @@ export interface MetricsResponse {
       totalUsd: number;
       trend30d: number | null;
     };
+    gnoPrice: {
+      usd: number;
+      trend24h: number | null;
+    };
   };
   fiatRates: FiatRates;
   meta: {
@@ -110,7 +138,8 @@ export interface MetricsResponse {
 /** History API response */
 export interface HistoryResponse {
   metric: string;
-  granularity: "hourly" | "daily";
+  timeframe: string;
+  granularity: "minute" | "hourly" | "daily";
   points: Array<{
     timestamp: string;
     value: number;

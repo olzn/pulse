@@ -1,29 +1,23 @@
 import type {
-  BlockscoutStats,
-  BlockscoutChartResponse,
   BeaconCommitteeResponse,
+  BlockscoutChartResponse,
+  BlockscoutStats,
+  CoinGeckoMarketChart,
+  CoinGeckoResponse,
+  CryptoCompareHistoryResponse,
   DefiLlamaChain,
   DefiLlamaHistoricalTVL,
-  CoinGeckoResponse,
   FiatRates,
 } from "./types";
 
-const BLOCKSCOUT_API_URL =
-  process.env.BLOCKSCOUT_API_URL || "https://gnosis.blockscout.com/api/v2";
-const BEACON_URL =
-  process.env.GNOSIS_BEACON_URL || "https://rpc-gbc.gnosischain.com";
-const COINGECKO_API_URL =
-  process.env.COINGECKO_API_URL || "https://api.coingecko.com/api/v3";
-const DEFILLAMA_API_URL =
-  process.env.DEFILLAMA_API_URL || "https://api.llama.fi";
+const BLOCKSCOUT_API_URL = process.env.BLOCKSCOUT_API_URL || "https://gnosis.blockscout.com/api/v2";
+const BEACON_URL = process.env.GNOSIS_BEACON_URL || "https://rpc-gbc.gnosischain.com";
+const COINGECKO_API_URL = process.env.COINGECKO_API_URL || "https://api.coingecko.com/api/v3";
+const DEFILLAMA_API_URL = process.env.DEFILLAMA_API_URL || "https://api.llama.fi";
 
 // --- Retry utility ---
 
-async function fetchWithRetry<T>(
-  url: string,
-  retries = 2,
-  backoffMs = 1000,
-): Promise<T> {
+async function fetchWithRetry<T>(url: string, retries = 2, backoffMs = 1000): Promise<T> {
   let lastError: Error | undefined;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -47,9 +41,7 @@ async function fetchWithRetry<T>(
       }
 
       if (attempt < retries) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, backoffMs * (attempt + 1)),
-        );
+        await new Promise((resolve) => setTimeout(resolve, backoffMs * (attempt + 1)));
       }
     }
   }
@@ -64,9 +56,7 @@ export async function fetchBlockscoutStats(): Promise<BlockscoutStats> {
 }
 
 export async function fetchBlockscoutTxChart(): Promise<BlockscoutChartResponse> {
-  return fetchWithRetry<BlockscoutChartResponse>(
-    `${BLOCKSCOUT_API_URL}/stats/charts/transactions`,
-  );
+  return fetchWithRetry<BlockscoutChartResponse>(`${BLOCKSCOUT_API_URL}/stats/charts/transactions`);
 }
 
 // --- Beacon chain (validators) ---
@@ -102,9 +92,7 @@ export async function fetchValidatorCount(): Promise<number> {
 // --- DefiLlama (TVL) ---
 
 export async function fetchTVL(): Promise<number> {
-  const chains = await fetchWithRetry<DefiLlamaChain[]>(
-    `${DEFILLAMA_API_URL}/v2/chains`,
-  );
+  const chains = await fetchWithRetry<DefiLlamaChain[]>(`${DEFILLAMA_API_URL}/v2/chains`);
 
   const gnosis = chains.find((c) => c.name === "Gnosis");
   if (!gnosis) throw new Error("Gnosis not found in DefiLlama chains");
@@ -120,20 +108,29 @@ export async function fetchHistoricalTVL(): Promise<DefiLlamaHistoricalTVL[]> {
 
 // --- CoinGecko (fiat rates) ---
 
-let fiatRatesCache: { rates: FiatRates; fetchedAt: number } | null = null;
+let coinGeckoCache: { data: { rates: FiatRates; gno: GnoPrice }; fetchedAt: number } | null = null;
 const FIAT_RATES_CACHE_TTL = 120 * 1000; // 120 seconds
 
 const FALLBACK_RATES: FiatRates = { usd: 1, gbp: 0.79, eur: 0.92 };
 
-export async function fetchFiatRates(): Promise<FiatRates> {
+export interface GnoPrice {
+  usd: number;
+  gbp: number;
+  eur: number;
+  trend24h: number | null;
+}
+
+const FALLBACK_GNO: GnoPrice = { usd: 0, gbp: 0, eur: 0, trend24h: null };
+
+export async function fetchFiatRatesAndGno(): Promise<{ rates: FiatRates; gno: GnoPrice }> {
   // Return cached value if fresh (respect CoinGecko rate limits)
-  if (fiatRatesCache && Date.now() - fiatRatesCache.fetchedAt < FIAT_RATES_CACHE_TTL) {
-    return fiatRatesCache.rates;
+  if (coinGeckoCache && Date.now() - coinGeckoCache.fetchedAt < FIAT_RATES_CACHE_TTL) {
+    return coinGeckoCache.data;
   }
 
   try {
     const data = await fetchWithRetry<CoinGeckoResponse>(
-      `${COINGECKO_API_URL}/simple/price?ids=xdai&vs_currencies=usd,gbp,eur`,
+      `${COINGECKO_API_URL}/simple/price?ids=xdai,gnosis&vs_currencies=usd,gbp,eur&include_24hr_change=true`,
     );
 
     const rates: FiatRates = {
@@ -142,11 +139,62 @@ export async function fetchFiatRates(): Promise<FiatRates> {
       eur: data.xdai.eur,
     };
 
-    fiatRatesCache = { rates, fetchedAt: Date.now() };
-    return rates;
+    const gno: GnoPrice = {
+      usd: data.gnosis.usd,
+      gbp: data.gnosis.gbp,
+      eur: data.gnosis.eur,
+      trend24h: data.gnosis.usd_24h_change ?? null,
+    };
+
+    const result = { rates, gno };
+    coinGeckoCache = { data: result, fetchedAt: Date.now() };
+    return result;
   } catch {
-    // Fall back to hardcoded rates if CoinGecko is unavailable
-    if (fiatRatesCache) return fiatRatesCache.rates;
-    return FALLBACK_RATES;
+    // Fall back if CoinGecko is unavailable
+    if (coinGeckoCache) return coinGeckoCache.data;
+    return { rates: FALLBACK_RATES, gno: FALLBACK_GNO };
   }
+}
+
+// --- CoinGecko (GNO historical price — kept for backwards compat) ---
+
+export async function fetchGnoPriceHistory(): Promise<CoinGeckoMarketChart> {
+  return fetchWithRetry<CoinGeckoMarketChart>(
+    `${COINGECKO_API_URL}/coins/gnosis/market_chart?vs_currency=usd&days=30&interval=daily`,
+  );
+}
+
+// --- CryptoCompare (GNO price history — minute/hourly/daily) ---
+
+const CRYPTOCOMPARE_API_URL = "https://min-api.cryptocompare.com/data/v2";
+
+export async function fetchGnoPriceMinute(limit: number): Promise<CryptoCompareHistoryResponse> {
+  return fetchWithRetry<CryptoCompareHistoryResponse>(
+    `${CRYPTOCOMPARE_API_URL}/histominute?fsym=GNO&tsym=USD&limit=${limit}`,
+  );
+}
+
+export async function fetchGnoPriceHourly(limit: number): Promise<CryptoCompareHistoryResponse> {
+  return fetchWithRetry<CryptoCompareHistoryResponse>(
+    `${CRYPTOCOMPARE_API_URL}/histohour?fsym=GNO&tsym=USD&limit=${limit}`,
+  );
+}
+
+export async function fetchGnoPriceDaily(
+  limit: number,
+  allData = false,
+): Promise<CryptoCompareHistoryResponse> {
+  const params = allData ? "fsym=GNO&tsym=USD&allData=true" : `fsym=GNO&tsym=USD&limit=${limit}`;
+  return fetchWithRetry<CryptoCompareHistoryResponse>(
+    `${CRYPTOCOMPARE_API_URL}/histoday?${params}`,
+  );
+}
+
+export function normalizeCryptoCompare(
+  data: CryptoCompareHistoryResponse,
+): Array<{ timestamp: string; value: number }> {
+  return data.Data.Data.map((d) => ({
+    timestamp: new Date(d.time * 1000).toISOString(),
+    value: d.close,
+  }));
 }

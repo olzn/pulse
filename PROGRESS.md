@@ -125,6 +125,9 @@ CRON_SECRET=
 - **Validator 7d trend** — Same, returns `null`.
 - To provision: add Upstash Redis via Vercel Marketplace, copy URL+token to env vars, set a `CRON_SECRET`.
 
+### Feature requests
+- **GNO price tracking** — Display the current price of GNO token. CoinGecko already integrated (`ids=gnosis` or `ids=gnosis` endpoint); would need a new metric in `src/config/metrics.ts` and a source fetcher addition.
+
 ### Phase 3 (not started — from PRD/tech spec)
 - Bridge volume metric (deferred from Phase 2)
 - Additional data sources for bridge activity

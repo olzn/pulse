@@ -1,9 +1,9 @@
 "use client";
 
-import { useMetrics } from "@/lib/hooks/use-metrics";
-import { useCurrency } from "@/lib/hooks/use-currency";
-import { StatusDot } from "./status-dot";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCurrency } from "@/lib/hooks/use-currency";
+import { useMetrics } from "@/lib/hooks/use-metrics";
+import { StatusDot } from "./status-dot";
 
 const statusMessages = {
   healthy: "Gnosis Chain is running smoothly.",
@@ -46,9 +46,7 @@ export function Hero() {
           {statusMessages[status]}
         </h1>
       </div>
-      <p className="mt-2 text-lg text-content-secondary">
-        {subtitle}
-      </p>
+      <p className="mt-2 text-lg text-content-secondary">{subtitle}</p>
     </div>
   );
 }

@@ -70,13 +70,8 @@ export async function getSnapshot(metric: string, date: string): Promise<number 
  * Compute 7-day trend percentage for a metric.
  * Returns null if no snapshot exists from 7 days ago.
  */
-export async function getTrend7d(
-  metric: string,
-  currentValue: number,
-): Promise<number | null> {
-  const sevenDaysAgo = new Date(Date.now() - 7 * 86400 * 1000)
-    .toISOString()
-    .split("T")[0];
+export async function getTrend7d(metric: string, currentValue: number): Promise<number | null> {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86400 * 1000).toISOString().split("T")[0];
 
   const previousValue = await getSnapshot(metric, sevenDaysAgo);
   if (previousValue === null || previousValue === 0) return null;

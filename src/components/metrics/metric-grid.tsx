@@ -1,15 +1,15 @@
 "use client";
 
-import { useCallback } from "react";
 import { motion } from "motion/react";
-import { METRICS, type MetricId } from "@/config/metrics";
-import { useMetrics } from "@/lib/hooks/use-metrics";
-import { useCurrency } from "@/lib/hooks/use-currency";
-import { MetricCard } from "./metric-card";
-import { staggerContainer, fadeUp } from "@/lib/motion/variants";
+import { useCallback } from "react";
+import { hasChart, METRICS, type MetricId } from "@/config/metrics";
 import type { FiatRates, MetricsResponse } from "@/lib/data/types";
+import { useCurrency } from "@/lib/hooks/use-currency";
+import { useMetrics } from "@/lib/hooks/use-metrics";
+import { fadeUp, staggerContainer } from "@/lib/motion/variants";
+import { MetricCard } from "./metric-card";
 
-const FIAT_METRICS = new Set<MetricId>(["gasPrice", "tvl"]);
+const FIAT_METRICS = new Set<MetricId>(["gasPrice", "tvl", "gnoPrice"]);
 
 function getMetricValue(
   metrics: MetricsResponse | undefined,
@@ -29,6 +29,8 @@ function getMetricValue(
       return { value: m.validators.active, trend: m.validators.trend7d };
     case "tvl":
       return { value: m.tvl.totalUsd, trend: m.tvl.trend30d };
+    case "gnoPrice":
+      return { value: m.gnoPrice.usd, trend: m.gnoPrice.trend24h };
     default:
       return { value: undefined, trend: undefined };
   }
@@ -47,10 +49,7 @@ export function MetricGrid({ selectedMetric, onSelectMetric }: MetricGridProps) 
 
   const makeFiatFormatter = useCallback(
     (metricId: MetricId, rates: FiatRates) => {
-      if (metricId === "gasPrice") {
-        return (v: number) => formatFiat(v, rates);
-      }
-      if (metricId === "tvl") {
+      if (metricId === "gasPrice" || metricId === "tvl" || metricId === "gnoPrice") {
         return (v: number) => formatFiat(v, rates);
       }
       return undefined;
@@ -69,9 +68,7 @@ export function MetricGrid({ selectedMetric, onSelectMetric }: MetricGridProps) 
       {METRICS.map((config) => {
         const { value, trend } = getMetricValue(data, config.id);
         const formatOverride =
-          FIAT_METRICS.has(config.id) && rates
-            ? makeFiatFormatter(config.id, rates)
-            : undefined;
+          FIAT_METRICS.has(config.id) && rates ? makeFiatFormatter(config.id, rates) : undefined;
         return (
           <motion.div key={config.id} variants={fadeUp}>
             <MetricCard
@@ -80,9 +77,7 @@ export function MetricGrid({ selectedMetric, onSelectMetric }: MetricGridProps) 
               trend={trend}
               isLoading={isLoading}
               onClick={
-                config.hasHistory && onSelectMetric
-                  ? () => onSelectMetric(config.id)
-                  : undefined
+                hasChart(config) && onSelectMetric ? () => onSelectMetric(config.id) : undefined
               }
               isSelected={selectedMetric === config.id}
               formatOverride={formatOverride}

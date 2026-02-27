@@ -9,9 +9,7 @@ export function Footer() {
   return (
     <footer className="border-t border-border-subtle px-4 py-6 text-center text-xs text-content-tertiary sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl space-y-1">
-        {data?.meta.lastUpdated && (
-          <p>Last updated {timeAgo(data.meta.lastUpdated)}</p>
-        )}
+        {data?.meta.lastUpdated && <p>Last updated {timeAgo(data.meta.lastUpdated)}</p>}
         <p>
           Data from{" "}
           <a
@@ -41,9 +39,7 @@ export function Footer() {
             Gnosisscan
           </a>
         </p>
-        <p className="text-content-tertiary/60">
-          A Gnosis Chain community project
-        </p>
+        <p className="text-content-tertiary/60">A Gnosis Chain community project</p>
       </div>
     </footer>
   );

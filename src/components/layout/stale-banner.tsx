@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useMetrics } from "@/lib/hooks/use-metrics";
 import { timeAgo } from "@/lib/utils/format";
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { fetchBlockscoutStats, fetchValidatorCount } from "@/lib/data/sources";
 import { saveSnapshot } from "@/lib/data/cache";
+import { fetchBlockscoutStats, fetchValidatorCount } from "@/lib/data/sources";
 
 export async function GET(request: Request) {
   // Verify cron secret in production

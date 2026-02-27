@@ -3,7 +3,30 @@ export type MetricId =
   | "transactions24h"
   | "blockTime"
   | "validators"
-  | "tvl";
+  | "tvl"
+  | "gnoPrice";
+
+export type Timeframe = "live" | "1h" | "24h" | "7d" | "1mo" | "1yr" | "all";
+
+export const TIMEFRAME_LABELS: Record<Timeframe, string> = {
+  live: "Live",
+  "1h": "1H",
+  "24h": "24H",
+  "7d": "7D",
+  "1mo": "1M",
+  "1yr": "1Y",
+  all: "All",
+};
+
+export const TIMEFRAME_SECS: Record<Timeframe, number> = {
+  live: 300,
+  "1h": 3_600,
+  "24h": 86_400,
+  "7d": 604_800,
+  "1mo": 2_592_000,
+  "1yr": 31_536_000,
+  all: 157_680_000, // ~5 years
+};
 
 export interface MetricConfig {
   id: MetricId;
@@ -13,7 +36,17 @@ export interface MetricConfig {
   format: (value: number) => string;
   invertSentiment?: boolean;
   trendPeriod: "7d" | "30d";
-  hasHistory: boolean;
+  timeframes: Timeframe[];
+}
+
+export function hasChart(config: MetricConfig): boolean {
+  return config.timeframes.length > 1;
+}
+
+export function defaultTimeframe(config: MetricConfig): Timeframe {
+  if (config.timeframes.includes("7d")) return "7d";
+  const nonLive = config.timeframes.find((t) => t !== "live");
+  return nonLive ?? "live";
 }
 
 export const METRICS: MetricConfig[] = [
@@ -34,7 +67,7 @@ export const METRICS: MetricConfig[] = [
     },
     invertSentiment: true,
     trendPeriod: "7d",
-    hasHistory: false, // Requires KV snapshots — enabled once cron accumulates data
+    timeframes: ["live"],
   },
   {
     id: "transactions24h",
@@ -45,7 +78,7 @@ export const METRICS: MetricConfig[] = [
       "More transactions generally means more people and apps are using the chain.",
     format: (v: number) => new Intl.NumberFormat("en-US").format(Math.round(v)),
     trendPeriod: "7d",
-    hasHistory: true,
+    timeframes: ["7d", "1mo"],
   },
   {
     id: "blockTime",
@@ -58,7 +91,7 @@ export const METRICS: MetricConfig[] = [
     format: (v: number) => `${v.toFixed(1)}s`,
     invertSentiment: true,
     trendPeriod: "7d",
-    hasHistory: false,
+    timeframes: ["live"],
   },
   {
     id: "validators",
@@ -69,7 +102,7 @@ export const METRICS: MetricConfig[] = [
       "More validators means the network is more decentralised and harder to attack.",
     format: (v: number) => new Intl.NumberFormat("en-US").format(Math.round(v)),
     trendPeriod: "7d",
-    hasHistory: false, // Requires KV snapshots — enabled once cron accumulates data
+    timeframes: ["live"],
   },
   {
     id: "tvl",
@@ -86,6 +119,22 @@ export const METRICS: MetricConfig[] = [
         maximumFractionDigits: 1,
       }).format(v),
     trendPeriod: "30d",
-    hasHistory: true,
+    timeframes: ["live", "7d", "1mo", "1yr", "all"],
+  },
+  {
+    id: "gnoPrice",
+    label: "GNO price",
+    description: "Current price of GNO token",
+    explainer:
+      "GNO is the native governance token of Gnosis Chain. " +
+      "Validators stake GNO to secure the network, and it's used for governance decisions.",
+    format: (v: number) =>
+      new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 2,
+      }).format(v),
+    trendPeriod: "7d",
+    timeframes: ["live", "1h", "24h", "7d", "1mo", "1yr", "all"],
   },
 ];

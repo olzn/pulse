@@ -1,8 +1,8 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { LazyMotion, domAnimation } from "motion/react";
-import { useState, type ReactNode } from "react";
+import { domAnimation, LazyMotion } from "motion/react";
+import { type ReactNode, useState } from "react";
 import { CurrencyProvider } from "@/lib/hooks/use-currency";
 
 export function Providers({ children }: { children: ReactNode }) {

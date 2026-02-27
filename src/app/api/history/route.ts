@@ -1,10 +1,18 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { fetchBlockscoutTxChart, fetchHistoricalTVL } from "@/lib/data/sources";
+import { type NextRequest, NextResponse } from "next/server";
 import { getSnapshot } from "@/lib/data/cache";
+import {
+  fetchBlockscoutTxChart,
+  fetchGnoPriceDaily,
+  fetchGnoPriceHourly,
+  fetchGnoPriceMinute,
+  fetchHistoricalTVL,
+  normalizeCryptoCompare,
+} from "@/lib/data/sources";
 import type { HistoryResponse } from "@/lib/data/types";
 
 export async function GET(request: NextRequest) {
   const metric = request.nextUrl.searchParams.get("metric");
+  const timeframe = request.nextUrl.searchParams.get("timeframe") || "7d";
 
   if (!metric) {
     return NextResponse.json({ error: "metric param required" }, { status: 400 });
@@ -14,34 +22,108 @@ export async function GET(request: NextRequest) {
     let response: HistoryResponse;
 
     switch (metric) {
-      case "transactions24h": {
-        const chart = await fetchBlockscoutTxChart();
-        const points = chart.chart_data
-          .map((d) => ({
-            timestamp: new Date(d.date).toISOString(),
-            value: d.transactions_count,
-          }))
-          .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-        response = {
-          metric,
-          granularity: "daily",
-          points,
-        };
+      case "gnoPrice": {
+        let points: HistoryResponse["points"];
+        let granularity: HistoryResponse["granularity"];
+
+        switch (timeframe) {
+          case "1h":
+            points = normalizeCryptoCompare(await fetchGnoPriceMinute(60));
+            granularity = "minute";
+            break;
+          case "24h":
+            points = normalizeCryptoCompare(await fetchGnoPriceMinute(1440));
+            granularity = "minute";
+            break;
+          case "7d":
+            points = normalizeCryptoCompare(await fetchGnoPriceHourly(168));
+            granularity = "hourly";
+            break;
+          case "1mo":
+            points = normalizeCryptoCompare(await fetchGnoPriceDaily(30));
+            granularity = "daily";
+            break;
+          case "1yr":
+            points = normalizeCryptoCompare(await fetchGnoPriceDaily(365));
+            granularity = "daily";
+            break;
+          case "all":
+            points = normalizeCryptoCompare(await fetchGnoPriceDaily(0, true));
+            granularity = "daily";
+            break;
+          default:
+            return NextResponse.json(
+              { error: `unsupported timeframe: ${timeframe}` },
+              { status: 400 },
+            );
+        }
+
+        response = { metric, timeframe, granularity, points };
         break;
       }
 
       case "tvl": {
         const history = await fetchHistoricalTVL();
-        // Slice to last 30 days
-        const last30 = history.slice(-30);
+        let sliced: typeof history;
+
+        switch (timeframe) {
+          case "7d":
+            sliced = history.slice(-7);
+            break;
+          case "1mo":
+            sliced = history.slice(-30);
+            break;
+          case "1yr":
+            sliced = history.slice(-365);
+            break;
+          case "all":
+            sliced = history;
+            break;
+          default:
+            return NextResponse.json(
+              { error: `unsupported timeframe: ${timeframe}` },
+              { status: 400 },
+            );
+        }
+
         response = {
           metric,
+          timeframe,
           granularity: "daily",
-          points: last30.map((d) => ({
+          points: sliced.map((d) => ({
             timestamp: new Date(d.date * 1000).toISOString(),
             value: d.tvl,
           })),
         };
+        break;
+      }
+
+      case "transactions24h": {
+        const chart = await fetchBlockscoutTxChart();
+        const sorted = chart.chart_data
+          .map((d) => ({
+            timestamp: new Date(d.date).toISOString(),
+            value: d.transactions_count,
+          }))
+          .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+        let points: HistoryResponse["points"];
+
+        switch (timeframe) {
+          case "7d":
+            points = sorted.slice(-7);
+            break;
+          case "1mo":
+            points = sorted;
+            break;
+          default:
+            return NextResponse.json(
+              { error: `unsupported timeframe: ${timeframe}` },
+              { status: 400 },
+            );
+        }
+
+        response = { metric, timeframe, granularity: "daily", points };
         break;
       }
 
@@ -63,11 +145,7 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        response = {
-          metric,
-          granularity: "daily",
-          points,
-        };
+        response = { metric, timeframe, granularity: "daily", points };
         break;
       }
 
@@ -75,9 +153,12 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "unknown metric" }, { status: 400 });
     }
 
+    // Shorter CDN cache for minute-level data
+    const cacheSecs = response.granularity === "minute" ? 15 : 30;
+
     return NextResponse.json(response, {
       headers: {
-        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=10",
+        "Cache-Control": `public, s-maxage=${cacheSecs}, stale-while-revalidate=10`,
       },
     });
   } catch {

@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
 import { Agentation } from "agentation";
+import type { Metadata } from "next";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 

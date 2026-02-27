@@ -1,7 +1,7 @@
 "use client";
 
+import { motion, useSpring, useTransform } from "motion/react";
 import { useEffect } from "react";
-import { useSpring, useTransform, motion } from "motion/react";
 
 interface AnimatedNumberProps {
   value: number;
@@ -22,10 +22,7 @@ export function AnimatedNumber({ value, format }: AnimatedNumberProps) {
   const display = useTransform(spring, (v) => format(v));
 
   return (
-    <motion.span
-      className="tabular-nums"
-      style={{ fontVariantNumeric: "tabular-nums" }}
-    >
+    <motion.span className="tabular-nums" style={{ fontVariantNumeric: "tabular-nums" }}>
       {display}
     </motion.span>
   );

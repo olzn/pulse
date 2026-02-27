@@ -1,8 +1,8 @@
 "use client";
 
+import type { FiatCurrency } from "@/lib/data/types";
 import { useCurrency } from "@/lib/hooks/use-currency";
 import { cn } from "@/lib/utils/cn";
-import type { FiatCurrency } from "@/lib/data/types";
 
 const currencies: FiatCurrency[] = ["USD", "GBP", "EUR"];
 
